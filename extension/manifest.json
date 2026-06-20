@@ -3,8 +3,8 @@
   "name": "SavedAndSorted",
   "version": "1.0.0",
   "description": "Send LinkedIn posts to your local SavedAndSorted library with one click. Auto-tagged by local AI.",
-  "permissions": ["activeTab", "storage"],
-  "host_permissions": ["https://www.linkedin.com/*", "http://localhost:3131/*", "http://192.168.*.*:3131/*"],
+  "permissions": ["activeTab", "storage", "scripting"],
+  "host_permissions": ["https://www.linkedin.com/*", "http://localhost:3131/*", "http://*/*"],
   "action": {
     "default_popup": "popup.html",
     "default_icon": {
