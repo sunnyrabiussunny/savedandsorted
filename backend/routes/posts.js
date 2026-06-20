@@ -10,41 +10,34 @@ router.get('/', (req, res) => {
   const offset = (parseInt(page) - 1) * parseInt(limit);
 
   let where = [];
-  let params = [];
-
-  if (status) { where.push(`p.status = ?`); params.push(status); }
-  if (type) { where.push(`p.post_type = ?`); params.push(type); }
-
-  let joinClause = `
-    LEFT JOIN summaries s ON s.post_id = p.id
-  `;
+  let joinClause = `LEFT JOIN summaries s ON s.post_id = p.id`;
+  let joinParams = [];
+  let whereParams = [];
 
   if (tag) {
-    joinClause += `
-      JOIN post_tags pt ON pt.post_id = p.id
-      JOIN tags t ON t.id = pt.tag_id AND t.name = ?
-    `;
-    params.push(tag);
+    joinClause += ` JOIN post_tags pt ON pt.post_id = p.id JOIN tags t ON t.id = pt.tag_id AND t.name = ?`;
+    joinParams.push(tag);
   }
 
   if (topic) {
-    joinClause += `
-      JOIN topics top ON top.post_id = p.id AND top.topic LIKE ?
-    `;
-    params.push(`%${topic}%`);
+    joinClause += ` JOIN topics top ON top.post_id = p.id AND top.topic LIKE ?`;
+    joinParams.push(`%${topic}%`);
   }
+
+  if (status) { where.push(`p.status = ?`); whereParams.push(status); }
+  if (type)   { where.push(`p.post_type = ?`); whereParams.push(type); }
 
   if (q) {
     where.push(`(p.content LIKE ? OR p.author_name LIKE ? OR s.one_liner LIKE ? OR s.key_points LIKE ?)`);
-    params.push(`%${q}%`, `%${q}%`, `%${q}%`, `%${q}%`);
+    whereParams.push(`%${q}%`, `%${q}%`, `%${q}%`, `%${q}%`);
   }
 
   const whereSQL = where.length ? `WHERE ${where.join(' AND ')}` : '';
+  const allParams = [...joinParams, ...whereParams];
 
-  const countParams = [...params];
   const total = db.prepare(`
     SELECT COUNT(DISTINCT p.id) as count FROM posts p ${joinClause} ${whereSQL}
-  `).get(...countParams).count;
+  `).get(allParams).count;
 
   const posts = db.prepare(`
     SELECT DISTINCT
@@ -57,7 +50,7 @@ router.get('/', (req, res) => {
     ${whereSQL}
     ORDER BY p.captured_at DESC
     LIMIT ? OFFSET ?
-  `).all(...params, parseInt(limit), offset);
+  `).all([...allParams, parseInt(limit), offset]);
 
   // Attach tags and topics to each post
   const getPostTags = db.prepare(`

@@ -3,6 +3,7 @@ const cors = require('cors');
 const path = require('path');
 const { initDB } = require('./db/database');
 const { startQueue } = require('./services/queue');
+const { router: importRouter, startScheduler } = require('./routes/import');
 const postsRouter = require('./routes/posts');
 const captureRouter = require('./routes/capture');
 
@@ -15,6 +16,7 @@ app.use(express.static(path.join(__dirname, '../frontend')));
 
 app.use('/api/posts', postsRouter);
 app.use('/api/capture', captureRouter);
+app.use('/api/import', importRouter);
 
 app.get('/health', (req, res) => res.json({ status: 'ok', timestamp: new Date().toISOString() }));
 
@@ -24,6 +26,7 @@ app.get('*', (req, res) => {
 
 initDB().then(() => {
   startQueue();
+  startScheduler();
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`SavedAndSorted running on http://0.0.0.0:${PORT}`);
   });

@@ -74,6 +74,11 @@ async function initDB() {
     CREATE INDEX IF NOT EXISTS idx_posts_status ON posts(status);
     CREATE INDEX IF NOT EXISTS idx_posts_captured ON posts(captured_at DESC);
     CREATE INDEX IF NOT EXISTS idx_topics_topic ON topics(topic);
+
+    CREATE TABLE IF NOT EXISTS config (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL
+    );
   `);
 
   console.log('Database initialized at', DB_PATH);

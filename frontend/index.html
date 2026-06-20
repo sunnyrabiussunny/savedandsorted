@@ -336,6 +336,13 @@
     <!-- SIDEBAR -->
     <aside class="sidebar">
       <div class="sidebar-section">
+        <div class="sidebar-label">Tools</div>
+        <div class="nav-item" onclick="showImport()" id="nav-import">
+          📥 Bulk Import
+        </div>
+      </div>
+
+      <div class="sidebar-section">
         <div class="sidebar-label">Library</div>
         <div class="nav-item active" onclick="filterBy('all')" id="nav-all">
           📚 All Posts <span class="count" id="count-all">0</span>
@@ -411,6 +418,89 @@
       <div id="postsList" class="posts-grid"></div>
       <div id="pagination" class="pagination"></div>
     </main>
+  </div>
+</div>
+
+<!-- IMPORT PANEL -->
+<div class="detail-overlay" id="importOverlay" onclick="closeImportPanel(event)">
+  <div class="detail-panel" id="importPanel" style="width:560px">
+    <button class="detail-close" onclick="closeImportOverlay()">← Back to library</button>
+
+    <div style="font-size:18px;font-weight:700;margin-bottom:4px">📥 Bulk Import</div>
+    <div style="font-size:13px;color:var(--text3);margin-bottom:24px">Import saved posts from LinkedIn exporter tools (CSV or JSON)</div>
+
+    <!-- HOW TO EXPORT -->
+    <div class="detail-section">
+      <div class="detail-section-label">How to export from LinkedIn</div>
+      <div style="font-size:13px;color:var(--text2);line-height:1.7;background:var(--surface2);border-radius:8px;padding:12px">
+        1. Install <strong style="color:var(--text)">LinkedIn Saves Exporter</strong> or <strong style="color:var(--text)">LinkedIn Saved Posts Exporter</strong> from Chrome Web Store<br>
+        2. Go to <a href="https://www.linkedin.com/my-items/saved-posts/" target="_blank" style="color:var(--accent)">linkedin.com/my-items/saved-posts/</a><br>
+        3. Click the extension → Export All Posts → download CSV or JSON<br>
+        4. Upload that file below
+      </div>
+    </div>
+
+    <!-- FILE UPLOAD -->
+    <div class="detail-section">
+      <div class="detail-section-label">Upload file (CSV or JSON)</div>
+      <div id="dropZone" style="
+        border: 2px dashed var(--border); border-radius:10px; padding:32px;
+        text-align:center; cursor:pointer; transition:all 0.2s;
+        background:var(--surface2);
+      " onclick="document.getElementById('fileInput').click()"
+         ondragover="event.preventDefault();this.style.borderColor='var(--accent)'"
+         ondragleave="this.style.borderColor='var(--border)'"
+         ondrop="handleDrop(event)">
+        <div style="font-size:32px;margin-bottom:8px">📂</div>
+        <div style="font-size:14px;color:var(--text2)">Drop CSV or JSON file here, or click to browse</div>
+        <div style="font-size:12px;color:var(--text3);margin-top:4px">Supports: .csv, .json</div>
+      </div>
+      <input type="file" id="fileInput" accept=".csv,.json" style="display:none" onchange="handleFileSelect(event)">
+    </div>
+
+    <div id="importMsg" style="display:none;margin-bottom:16px"></div>
+    <div id="importProgress" style="display:none">
+      <div style="display:flex;align-items:center;gap:10px;padding:10px;background:rgba(124,106,247,0.1);border-radius:8px;border:1px solid rgba(124,106,247,0.2)">
+        <div class="spinner" style="border-color:rgba(124,106,247,0.3);border-top-color:var(--accent)"></div>
+        <span style="font-size:13px;color:var(--accent)">Importing posts...</span>
+      </div>
+    </div>
+
+    <hr style="border:none;border-top:1px solid var(--border);margin:20px 0">
+
+    <!-- AUTO SCHEDULE -->
+    <div class="detail-section">
+      <div class="detail-section-label">Auto-Import Schedule</div>
+      <div style="font-size:13px;color:var(--text2);margin-bottom:12px;line-height:1.6">
+        Drop export files into the NAS folder below and they'll be imported automatically at your chosen time. After import, files move to a <code style="color:var(--accent)">/done</code> subfolder.
+      </div>
+      <div id="watchDirNote" style="font-size:12px;padding:8px 10px;background:var(--surface2);border-radius:6px;margin-bottom:14px;color:var(--text3);font-family:monospace"></div>
+
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px">
+          <input type="checkbox" id="scheduleEnabled" style="width:16px;height:16px;accent-color:var(--accent)">
+          Enable daily auto-import
+        </label>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+        <span style="font-size:13px;color:var(--text2)">Run at</span>
+        <input type="number" id="scheduleHour" min="0" max="23" value="2" style="
+          width:60px;background:var(--surface2);border:1px solid var(--border);
+          border-radius:6px;padding:6px 8px;color:var(--text);font-size:14px;text-align:center
+        ">
+        <span style="font-size:13px;color:var(--text2)">:</span>
+        <input type="number" id="scheduleMinute" min="0" max="59" value="0" style="
+          width:60px;background:var(--surface2);border:1px solid var(--border);
+          border-radius:6px;padding:6px 8px;color:var(--text);font-size:14px;text-align:center
+        ">
+        <span style="font-size:12px;color:var(--text3)">(24h, NAS local time)</span>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-primary btn-sm" onclick="saveSchedule()">Save Schedule</button>
+        <button class="btn btn-ghost btn-sm" onclick="scanNow()">▶ Scan Folder Now</button>
+      </div>
+      <div id="scheduleStatus" style="margin-top:12px;font-size:12px;color:var(--text3)"></div>
+    </div>
   </div>
 </div>
 
@@ -718,7 +808,137 @@ async function deletePost(id) {
   loadStats();
 }
 
-// ─── UTILS ───────────────────────────────────────────────────────────────
+// ─── IMPORT PANEL ────────────────────────────────────────────────────────
+async function showImport() {
+  document.getElementById('importOverlay').classList.add('open');
+  updateNavActive('nav', ['all','pending','done','import'], 'nav-import');
+  // Load schedule config
+  try {
+    const r = await fetch('/api/import/schedule');
+    const data = await r.json();
+    document.getElementById('scheduleEnabled').checked = data.schedule.enabled;
+    document.getElementById('scheduleHour').value = data.schedule.hour;
+    document.getElementById('scheduleMinute').value = String(data.schedule.minute).padStart(2,'0');
+    document.getElementById('watchDirNote').textContent = '📁 NAS drop folder: ' + (data.watch_dir || '/app/data/imports');
+    if (data.last_run) {
+      const d = new Date(data.last_run);
+      const r = data.last_result || {};
+      document.getElementById('scheduleStatus').textContent =
+        `Last run: ${d.toLocaleString()} — ${r.filesProcessed || 0} files, ${r.imported || 0} imported, ${r.skipped || 0} skipped`;
+    }
+  } catch(e) {}
+}
+
+function closeImportOverlay() {
+  document.getElementById('importOverlay').classList.remove('open');
+  updateNavActive('nav', ['all','pending','done','import'], 'nav-all');
+}
+
+function closeImportPanel(e) {
+  if (e.target === document.getElementById('importOverlay')) closeImportOverlay();
+}
+
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('dropZone').style.borderColor = 'var(--border)';
+  const file = e.dataTransfer.files[0];
+  if (file) uploadFile(file);
+}
+
+function handleFileSelect(e) {
+  const file = e.target.files[0];
+  if (file) uploadFile(file);
+}
+
+async function uploadFile(file) {
+  const ext = file.name.split('.').pop().toLowerCase();
+  if (!['csv','json'].includes(ext)) {
+    showImportMsg('Only .csv and .json files are supported.', 'error');
+    return;
+  }
+
+  document.getElementById('importProgress').style.display = 'block';
+  document.getElementById('importMsg').style.display = 'none';
+
+  try {
+    const text = await file.text();
+    const r = await fetch(`/api/import/upload?filename=${encodeURIComponent(file.name)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: text
+    });
+    const data = await r.json();
+    document.getElementById('importProgress').style.display = 'none';
+
+    if (data.success) {
+      showImportMsg(
+        `✅ Done! ${data.imported} new posts imported, ${data.skipped} already existed, ${data.errors} errors. AI will tag them in the background.`,
+        'success'
+      );
+      loadStats();
+      loadPosts();
+    } else {
+      showImportMsg('❌ ' + (data.error || 'Import failed'), 'error');
+    }
+  } catch(e) {
+    document.getElementById('importProgress').style.display = 'none';
+    showImportMsg('❌ Error: ' + e.message, 'error');
+  }
+
+  // Reset file input
+  document.getElementById('fileInput').value = '';
+}
+
+function showImportMsg(text, type) {
+  const el = document.getElementById('importMsg');
+  el.style.display = 'block';
+  el.style.padding = '10px 12px';
+  el.style.borderRadius = '8px';
+  el.style.fontSize = '13px';
+  el.style.lineHeight = '1.6';
+  if (type === 'success') {
+    el.style.background = 'rgba(74,222,128,0.1)';
+    el.style.border = '1px solid rgba(74,222,128,0.2)';
+    el.style.color = '#4ade80';
+  } else {
+    el.style.background = 'rgba(248,113,113,0.1)';
+    el.style.border = '1px solid rgba(248,113,113,0.2)';
+    el.style.color = '#f87171';
+  }
+  el.textContent = text;
+}
+
+async function saveSchedule() {
+  const enabled = document.getElementById('scheduleEnabled').checked;
+  const hour = parseInt(document.getElementById('scheduleHour').value);
+  const minute = parseInt(document.getElementById('scheduleMinute').value);
+  try {
+    await fetch('/api/import/schedule', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ enabled, hour, minute })
+    });
+    toast('Schedule saved', 'success');
+    document.getElementById('scheduleStatus').textContent =
+      enabled ? `Auto-import scheduled daily at ${hour}:${String(minute).padStart(2,'0')}` : 'Auto-import disabled';
+  } catch(e) {
+    toast('Failed to save schedule', 'error');
+  }
+}
+
+async function scanNow() {
+  try {
+    const r = await fetch('/api/import/scan', { method: 'POST' });
+    const data = await r.json();
+    document.getElementById('scheduleStatus').textContent =
+      `Scan complete: ${data.filesProcessed} files processed, ${data.imported} posts imported, ${data.skipped} skipped`;
+    if (data.imported > 0) { loadStats(); loadPosts(); }
+    toast(`Scan done — ${data.imported} new posts`, 'success');
+  } catch(e) {
+    toast('Scan failed: ' + e.message, 'error');
+  }
+}
+
 function esc(str) {
   return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
