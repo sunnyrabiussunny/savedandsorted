@@ -43,7 +43,7 @@ router.get('/', (req, res) => {
     SELECT DISTINCT
       p.id, p.url, p.author_name, p.author_title, p.post_type,
       p.captured_at, p.status,
-      SUBSTR(p.content, 1, 300) as preview,
+      SUBSTR(p.content, 1, 2000) as preview,
       s.one_liner, s.key_points, s.why_saved
     FROM posts p
     ${joinClause}
