@@ -1,0 +1,26 @@
+{
+  "manifest_version": 3,
+  "name": "SavedAndSorted",
+  "version": "1.0.0",
+  "description": "Send LinkedIn posts to your local SavedAndSorted library with one click. Auto-tagged by local AI.",
+  "permissions": ["activeTab", "storage"],
+  "host_permissions": ["https://www.linkedin.com/*", "http://localhost:3131/*", "http://192.168.*.*:3131/*"],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icon16.png",
+      "48": "icon48.png"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://www.linkedin.com/saved/*", "https://www.linkedin.com/feed/*", "https://www.linkedin.com/posts/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "icons": {
+    "16": "icon16.png",
+    "48": "icon48.png"
+  }
+}

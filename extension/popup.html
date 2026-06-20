@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { 
+    width: 300px; font-family: system-ui, sans-serif;
+    background: #0f0f13; color: #e8e8f0;
+  }
+  .header {
+    padding: 14px 16px; border-bottom: 1px solid #2e2e3a;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .logo { font-size: 15px; font-weight: 700; }
+  .logo span { color: #7c6af7; }
+  .status { 
+    margin-left: auto; font-size: 11px; padding: 2px 8px;
+    border-radius: 10px; background: rgba(74,222,128,0.1); color: #4ade80;
+  }
+  .status.offline { background: rgba(248,113,113,0.1); color: #f87171; }
+  .body { padding: 16px; }
+  .info-row { font-size: 12px; color: #9090a8; margin-bottom: 12px; line-height: 1.5; }
+  .btn {
+    width: 100%; padding: 10px; border-radius: 8px; border: none;
+    font-size: 14px; font-weight: 600; cursor: pointer; margin-bottom: 8px;
+    transition: all 0.15s;
+  }
+  .btn-primary { background: #7c6af7; color: white; }
+  .btn-primary:hover { background: #5b4fcf; }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-ghost {
+    background: #22222c; color: #9090a8; border: 1px solid #2e2e3a;
+  }
+  .btn-ghost:hover { border-color: #7c6af7; color: #7c6af7; }
+  .msg { 
+    font-size: 12px; padding: 8px 10px; border-radius: 6px; margin-bottom: 10px;
+    display: none;
+  }
+  .msg.success { background: rgba(74,222,128,0.1); color: #4ade80; border: 1px solid rgba(74,222,128,0.2); }
+  .msg.error { background: rgba(248,113,113,0.1); color: #f87171; border: 1px solid rgba(248,113,113,0.2); }
+  .msg.info { background: rgba(124,106,247,0.1); color: #7c6af7; border: 1px solid rgba(124,106,247,0.2); }
+  .setting-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .setting-label { font-size: 12px; color: #9090a8; }
+  input[type=text] {
+    width: 100%; background: #22222c; border: 1px solid #2e2e3a;
+    border-radius: 6px; padding: 7px 10px; color: #e8e8f0; font-size: 12px;
+    outline: none; margin-bottom: 10px;
+  }
+  input[type=text]:focus { border-color: #7c6af7; }
+  .divider { border: none; border-top: 1px solid #2e2e3a; margin: 12px 0; }
+  .footer { 
+    padding: 10px 16px; border-top: 1px solid #2e2e3a;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .footer a { font-size: 11px; color: #7c6af7; text-decoration: none; }
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="logo">Saved<span>&</span>Sorted</div>
+  <div class="status offline" id="statusBadge">Connecting...</div>
+</div>
+
+<div class="body">
+  <div id="msg" class="msg"></div>
+  
+  <div class="info-row" id="pageInfo">Checking current page...</div>
+
+  <button class="btn btn-primary" id="saveBtn" onclick="savePost()">
+    📌 Save This Post to Library
+  </button>
+
+  <hr class="divider">
+
+  <div class="setting-row">
+    <span class="setting-label">NAS Address</span>
+  </div>
+  <input type="text" id="nasUrl" placeholder="http://192.168.10.103:3131">
+
+  <button class="btn btn-ghost" onclick="saveSettings()">Save Settings</button>
+</div>
+
+<div class="footer">
+  <span style="font-size:11px;color:#5a5a72">AI tags slowly in background</span>
+  <a id="libraryLink" href="#" target="_blank">Open Library →</a>
+</div>
+
+<script>
+const DEFAULT_NAS = 'http://192.168.10.103:3131';
+let nasUrl = DEFAULT_NAS;
+
+async function init() {
+  const stored = await chrome.storage.local.get(['nasUrl']);
+  nasUrl = stored.nasUrl || DEFAULT_NAS;
+  document.getElementById('nasUrl').value = nasUrl;
+  document.getElementById('libraryLink').href = nasUrl;
+  
+  await checkConnection();
+  await checkPage();
+}
+
+async function checkConnection() {
+  const badge = document.getElementById('statusBadge');
+  try {
+    const r = await fetch(`${nasUrl}/health`, { signal: AbortSignal.timeout(3000) });
+    if (r.ok) {
+      badge.textContent = '● Online';
+      badge.className = 'status';
+    } else throw new Error();
+  } catch {
+    badge.textContent = '● Offline';
+    badge.className = 'status offline';
+  }
+}
+
+async function checkPage() {
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  const info = document.getElementById('pageInfo');
+  const btn = document.getElementById('saveBtn');
+  
+  if (!tab.url?.includes('linkedin.com')) {
+    info.textContent = '⚠️ Navigate to a LinkedIn post to save it.';
+    btn.disabled = true;
+  } else {
+    info.textContent = '✓ LinkedIn page detected. Click to save.';
+    btn.disabled = false;
+  }
+}
+
+async function savePost() {
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  const btn = document.getElementById('saveBtn');
+  btn.disabled = true;
+  btn.textContent = 'Saving...';
+  showMsg('Extracting post content...', 'info');
+
+  try {
+    const results = await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: extractLinkedInPost
+    });
+
+    const postData = results[0].result;
+    if (!postData || !postData.content) {
+      showMsg('Could not extract post content. Make sure the post is fully loaded.', 'error');
+      return;
+    }
+
+    const r = await fetch(`${nasUrl}/api/capture`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...postData, url: tab.url })
+    });
+
+    const data = await r.json();
+    if (data.duplicate) {
+      showMsg('Already in your library!', 'info');
+    } else if (data.success) {
+      showMsg('Saved! AI will tag it in the background 🎉', 'success');
+    } else {
+      showMsg(data.error || 'Unknown error', 'error');
+    }
+  } catch (e) {
+    showMsg('Cannot reach SavedAndSorted. Check NAS address below.', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '📌 Save This Post to Library';
+  }
+}
+
+function extractLinkedInPost() {
+  function getText(selectors) {
+    for (const sel of selectors) {
+      const el = document.querySelector(sel);
+      if (el?.innerText?.trim()) return el.innerText.trim();
+    }
+    return '';
+  }
+
+  const author = getText([
+    '.feed-shared-actor__name',
+    '.update-components-actor__name',
+    '.feed-shared-update-v2__actor .app-aware-link span[aria-hidden]'
+  ]);
+
+  const authorTitle = getText([
+    '.feed-shared-actor__description',
+    '.update-components-actor__description'
+  ]);
+
+  // Try to get just the post content, not entire page
+  const contentEl = document.querySelector([
+    '.feed-shared-update-v2__description',
+    '.feed-shared-text',
+    '.update-components-text',
+    '[data-test-id="main-feed-activity-card__commentary"]'
+  ].join(', '));
+
+  const content = contentEl
+    ? contentEl.innerText.trim()
+    : document.body.innerText.slice(0, 3000);
+
+  return { content, author_name: author, author_title: authorTitle };
+}
+
+async function saveSettings() {
+  nasUrl = document.getElementById('nasUrl').value.trim().replace(/\/$/, '');
+  await chrome.storage.local.set({ nasUrl });
+  document.getElementById('libraryLink').href = nasUrl;
+  showMsg('Settings saved!', 'success');
+  await checkConnection();
+}
+
+function showMsg(text, type) {
+  const el = document.getElementById('msg');
+  el.textContent = text;
+  el.className = `msg ${type}`;
+  el.style.display = 'block';
+  setTimeout(() => { el.style.display = 'none'; }, 4000);
+}
+
+init();
+</script>
+</body>
+</html>

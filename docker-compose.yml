@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  savedandsorted:
+    build: .
+    container_name: savedandsorted
+    restart: unless-stopped
+    ports:
+      - "3131:3131"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - PORT=3131
+      - DB_PATH=/app/data/savedandsorted.db
+      - OLLAMA_HOST=${OLLAMA_HOST:-host-gateway}
+      - OLLAMA_PORT=${OLLAMA_PORT:-11434}
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-phi3:mini}
+    extra_hosts:
+      - "host-gateway:host-gateway"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3131/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # Optional: run Ollama in Docker too (uses CPU only - slow but works)
+  # Uncomment if you don't have Ollama installed on the host
+  # ollama:
+  #   image: ollama/ollama
+  #   container_name: savedandsorted-ollama
+  #   restart: unless-stopped
+  #   volumes:
+  #     - ./ollama_models:/root/.ollama
+  #   ports:
+  #     - "11434:11434"

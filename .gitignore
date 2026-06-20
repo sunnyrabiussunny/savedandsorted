@@ -1,0 +1,8 @@
+node_modules/
+data/
+*.db
+*.log
+.env
+.DS_Store
+dist/
+ollama_models/

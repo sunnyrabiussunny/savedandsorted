@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SavedAndSorted</title>
+<style>
+  :root {
+    --bg: #0f0f13;
+    --surface: #18181f;
+    --surface2: #22222c;
+    --border: #2e2e3a;
+    --accent: #7c6af7;
+    --accent2: #5b4fcf;
+    --accent-glow: rgba(124,106,247,0.15);
+    --text: #e8e8f0;
+    --text2: #9090a8;
+    --text3: #5a5a72;
+    --green: #4ade80;
+    --yellow: #fbbf24;
+    --red: #f87171;
+    --tag-bg: rgba(124,106,247,0.12);
+    --tag-border: rgba(124,106,247,0.3);
+    --radius: 10px;
+    --font: 'Inter', system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: var(--font); min-height: 100vh; }
+
+  /* LAYOUT */
+  .app { display: flex; flex-direction: column; height: 100vh; }
+  .header { 
+    display: flex; align-items: center; gap: 16px; padding: 14px 24px;
+    border-bottom: 1px solid var(--border); background: var(--surface);
+    position: sticky; top: 0; z-index: 100;
+  }
+  .logo { font-size: 18px; font-weight: 700; letter-spacing: -0.5px; white-space: nowrap; }
+  .logo span { color: var(--accent); }
+  .search-bar {
+    flex: 1; max-width: 480px;
+    display: flex; align-items: center; gap: 8px;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 8px 14px;
+  }
+  .search-bar input {
+    background: none; border: none; outline: none; color: var(--text);
+    font-size: 14px; width: 100%;
+  }
+  .search-bar input::placeholder { color: var(--text3); }
+  .search-icon { color: var(--text3); font-size: 16px; }
+  .header-actions { display: flex; gap: 8px; margin-left: auto; }
+
+  .main { display: flex; flex: 1; overflow: hidden; }
+
+  /* SIDEBAR */
+  .sidebar {
+    width: 220px; min-width: 220px; padding: 20px 0;
+    border-right: 1px solid var(--border); overflow-y: auto;
+    background: var(--surface);
+  }
+  .sidebar-section { margin-bottom: 24px; }
+  .sidebar-label {
+    font-size: 10px; font-weight: 600; letter-spacing: 1px;
+    color: var(--text3); text-transform: uppercase;
+    padding: 0 16px; margin-bottom: 6px;
+  }
+  .nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 16px; cursor: pointer; font-size: 14px;
+    color: var(--text2); border-radius: 0;
+    transition: all 0.15s; border-left: 2px solid transparent;
+  }
+  .nav-item:hover { background: var(--surface2); color: var(--text); }
+  .nav-item.active { 
+    background: var(--accent-glow); color: var(--accent); 
+    border-left-color: var(--accent);
+  }
+  .nav-item .count {
+    margin-left: auto; font-size: 11px; background: var(--surface2);
+    padding: 1px 6px; border-radius: 10px; color: var(--text3);
+  }
+  .nav-item.active .count { background: var(--accent-glow); color: var(--accent); }
+
+  .tag-pill-sidebar {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 16px; cursor: pointer; font-size: 13px;
+    color: var(--text2); transition: all 0.15s;
+    border-left: 2px solid transparent;
+  }
+  .tag-pill-sidebar:hover { background: var(--surface2); color: var(--text); }
+  .tag-pill-sidebar.active { color: var(--accent); border-left-color: var(--accent); background: var(--accent-glow); }
+  .tag-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
+
+  /* MAIN CONTENT */
+  .content { flex: 1; overflow-y: auto; padding: 20px 24px; }
+  .content-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 18px;
+  }
+  .content-title { font-size: 16px; font-weight: 600; }
+  .content-meta { font-size: 13px; color: var(--text3); }
+
+  /* STATS BAR */
+  .stats-bar {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;
+    margin-bottom: 20px;
+  }
+  .stat-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 14px 16px;
+  }
+  .stat-num { font-size: 24px; font-weight: 700; color: var(--text); }
+  .stat-label { font-size: 12px; color: var(--text3); margin-top: 2px; }
+  .stat-card.accent .stat-num { color: var(--accent); }
+  .stat-card.green .stat-num { color: var(--green); }
+  .stat-card.yellow .stat-num { color: var(--yellow); }
+
+  /* POST CARDS */
+  .posts-grid { display: flex; flex-direction: column; gap: 12px; }
+  .post-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 16px;
+    transition: border-color 0.15s, background 0.15s;
+    cursor: pointer;
+  }
+  .post-card:hover { border-color: var(--accent); background: var(--surface2); }
+  .post-card.pending { border-left: 3px solid var(--yellow); }
+  .post-card.error { border-left: 3px solid var(--red); }
+
+  .post-header { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 10px; }
+  .post-avatar {
+    width: 38px; height: 38px; border-radius: 50%;
+    background: var(--accent2); display: flex; align-items: center;
+    justify-content: center; font-size: 15px; font-weight: 600; flex-shrink: 0;
+    color: white; text-transform: uppercase;
+  }
+  .post-meta { flex: 1; min-width: 0; }
+  .post-author { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .post-author-title { font-size: 12px; color: var(--text3); margin-top: 1px; }
+  .post-date { font-size: 11px; color: var(--text3); white-space: nowrap; }
+
+  .post-one-liner { 
+    font-size: 14px; font-weight: 500; color: var(--text); 
+    margin-bottom: 6px; line-height: 1.4;
+  }
+  .post-preview { 
+    font-size: 13px; color: var(--text2); line-height: 1.5;
+    overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical; margin-bottom: 10px;
+  }
+  .post-why { 
+    font-size: 12px; color: var(--accent); 
+    background: var(--accent-glow); border-radius: 6px;
+    padding: 5px 8px; margin-bottom: 10px; font-style: italic;
+  }
+  .post-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+  .tag {
+    font-size: 11px; padding: 3px 8px; border-radius: 20px;
+    background: var(--tag-bg); border: 1px solid var(--tag-border);
+    color: var(--accent); cursor: pointer;
+  }
+  .tag:hover { background: var(--accent); color: white; border-color: var(--accent); }
+  .topic-badge {
+    font-size: 11px; padding: 2px 8px; border-radius: 4px;
+    background: var(--surface2); border: 1px solid var(--border);
+    color: var(--text2);
+  }
+  .post-footer { display: flex; align-items: center; gap: 8px; }
+  .post-type-badge {
+    font-size: 10px; padding: 2px 7px; border-radius: 4px; text-transform: uppercase;
+    letter-spacing: 0.5px; font-weight: 600;
+    background: var(--surface2); color: var(--text3);
+  }
+  .status-badge { font-size: 10px; padding: 2px 7px; border-radius: 4px; font-weight: 600; }
+  .status-badge.pending { background: rgba(251,191,36,0.15); color: var(--yellow); }
+  .status-badge.done { background: rgba(74,222,128,0.1); color: var(--green); }
+  .status-badge.error { background: rgba(248,113,113,0.1); color: var(--red); }
+  .post-link { 
+    margin-left: auto; font-size: 11px; color: var(--text3); text-decoration: none;
+    padding: 3px 8px; border-radius: 4px; border: 1px solid var(--border);
+  }
+  .post-link:hover { color: var(--accent); border-color: var(--accent); }
+
+  /* PROCESSING INDICATOR */
+  .processing-banner {
+    display: flex; align-items: center; gap: 10px;
+    background: rgba(251,191,36,0.08); border: 1px solid rgba(251,191,36,0.2);
+    border-radius: 8px; padding: 10px 16px; margin-bottom: 16px; font-size: 13px; color: var(--yellow);
+  }
+  .spinner {
+    width: 14px; height: 14px; border: 2px solid rgba(251,191,36,0.3);
+    border-top-color: var(--yellow); border-radius: 50%;
+    animation: spin 1s linear infinite; flex-shrink: 0;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* DETAIL PANEL */
+  .detail-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 200;
+    display: flex; align-items: flex-start; justify-content: flex-end;
+    opacity: 0; pointer-events: none; transition: opacity 0.2s;
+  }
+  .detail-overlay.open { opacity: 1; pointer-events: all; }
+  .detail-panel {
+    width: 480px; height: 100vh; overflow-y: auto;
+    background: var(--surface); border-left: 1px solid var(--border);
+    padding: 24px; transform: translateX(100%); transition: transform 0.25s ease;
+  }
+  .detail-overlay.open .detail-panel { transform: translateX(0); }
+  .detail-close {
+    display: flex; align-items: center; gap: 8px;
+    color: var(--text3); cursor: pointer; font-size: 13px; margin-bottom: 20px;
+    background: none; border: none; padding: 0;
+  }
+  .detail-close:hover { color: var(--text); }
+  .detail-author { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+  .detail-author-title { font-size: 13px; color: var(--text3); margin-bottom: 16px; }
+  .detail-section { margin-bottom: 18px; }
+  .detail-section-label {
+    font-size: 10px; font-weight: 700; letter-spacing: 1px;
+    text-transform: uppercase; color: var(--text3); margin-bottom: 8px;
+  }
+  .detail-one-liner { 
+    font-size: 15px; font-weight: 500; line-height: 1.4; 
+    padding: 12px; background: var(--surface2); border-radius: 8px;
+    border-left: 3px solid var(--accent);
+  }
+  .detail-key-points { font-size: 13px; color: var(--text2); line-height: 1.7; }
+  .key-point { 
+    display: flex; gap: 8px; margin-bottom: 6px; padding: 6px 8px;
+    background: var(--surface2); border-radius: 6px;
+  }
+  .key-point-dot { color: var(--accent); flex-shrink: 0; margin-top: 1px; }
+  .detail-content {
+    font-size: 13px; color: var(--text2); line-height: 1.6;
+    white-space: pre-wrap; max-height: 300px; overflow-y: auto;
+    padding: 12px; background: var(--surface2); border-radius: 8px;
+  }
+  .detail-why {
+    font-size: 13px; color: var(--accent); font-style: italic;
+    padding: 10px; background: var(--accent-glow); border-radius: 8px;
+  }
+  .detail-url {
+    display: block; font-size: 13px; color: var(--accent); 
+    word-break: break-all; text-decoration: none; 
+    padding: 8px; background: var(--surface2); border-radius: 6px;
+  }
+  .detail-url:hover { text-decoration: underline; }
+
+  /* BUTTONS */
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 8px 14px; border-radius: 8px; font-size: 13px;
+    font-weight: 500; cursor: pointer; border: none; transition: all 0.15s;
+  }
+  .btn-primary { background: var(--accent); color: white; }
+  .btn-primary:hover { background: var(--accent2); }
+  .btn-ghost { background: var(--surface2); color: var(--text2); border: 1px solid var(--border); }
+  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-sm { padding: 5px 10px; font-size: 12px; }
+  .btn-danger { background: rgba(248,113,113,0.1); color: var(--red); border: 1px solid rgba(248,113,113,0.2); }
+  .btn-danger:hover { background: rgba(248,113,113,0.2); }
+
+  /* EMPTY STATE */
+  .empty { 
+    text-align: center; padding: 60px 24px; color: var(--text3);
+  }
+  .empty-icon { font-size: 48px; margin-bottom: 16px; }
+  .empty h3 { font-size: 16px; color: var(--text2); margin-bottom: 8px; }
+  .empty p { font-size: 14px; line-height: 1.6; }
+  .empty .bookmarklet-code {
+    margin-top: 20px; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 14px; font-family: monospace; font-size: 12px;
+    text-align: left; color: var(--text2); word-break: break-all;
+    user-select: all; cursor: text;
+  }
+
+  /* PAGINATION */
+  .pagination { display: flex; gap: 8px; justify-content: center; margin-top: 24px; align-items: center; }
+  .page-btn { 
+    padding: 6px 12px; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 6px; color: var(--text2); cursor: pointer; font-size: 13px;
+  }
+  .page-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .page-btn.active { background: var(--accent); color: white; border-color: var(--accent); }
+  .page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .page-info { font-size: 13px; color: var(--text3); }
+
+  /* SCROLLBAR */
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  /* TOAST */
+  .toast {
+    position: fixed; bottom: 24px; right: 24px; z-index: 999;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 10px; padding: 12px 18px; font-size: 14px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4); display: flex; align-items: center; gap: 10px;
+    transform: translateY(100px); opacity: 0; transition: all 0.3s;
+  }
+  .toast.show { transform: translateY(0); opacity: 1; }
+  .toast.success { border-color: var(--green); color: var(--green); }
+  .toast.error { border-color: var(--red); color: var(--red); }
+
+  /* FILTER BAR */
+  .filter-bar { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+  .filter-chip {
+    padding: 5px 12px; border-radius: 20px; font-size: 12px;
+    background: var(--surface); border: 1px solid var(--border);
+    color: var(--text2); cursor: pointer; transition: all 0.15s;
+  }
+  .filter-chip:hover { border-color: var(--accent); color: var(--accent); }
+  .filter-chip.active { background: var(--accent); color: white; border-color: var(--accent); }
+
+  @media (max-width: 768px) {
+    .sidebar { display: none; }
+    .stats-bar { grid-template-columns: repeat(2,1fr); }
+    .detail-panel { width: 100%; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- HEADER -->
+  <header class="header">
+    <div class="logo">Saved<span>&</span>Sorted</div>
+    <div class="search-bar">
+      <span class="search-icon">🔍</span>
+      <input type="text" id="searchInput" placeholder="Search posts, authors, topics..." autocomplete="off">
+    </div>
+    <div class="header-actions">
+      <button class="btn btn-ghost btn-sm" onclick="showBookmarklet()">📎 Bookmarklet</button>
+      <button class="btn btn-primary btn-sm" onclick="refreshStats()">↻ Refresh</button>
+    </div>
+  </header>
+
+  <div class="main">
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+      <div class="sidebar-section">
+        <div class="sidebar-label">Library</div>
+        <div class="nav-item active" onclick="filterBy('all')" id="nav-all">
+          📚 All Posts <span class="count" id="count-all">0</span>
+        </div>
+        <div class="nav-item" onclick="filterBy('pending')" id="nav-pending">
+          ⏳ Processing <span class="count" id="count-pending">0</span>
+        </div>
+        <div class="nav-item" onclick="filterBy('done')" id="nav-done">
+          ✅ Organized <span class="count" id="count-done">0</span>
+        </div>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="sidebar-label">Post Type</div>
+        <div class="nav-item" onclick="filterByType('article')" id="type-article">📄 Articles</div>
+        <div class="nav-item" onclick="filterByType('video')" id="type-video">🎬 Videos</div>
+        <div class="nav-item" onclick="filterByType('tip')" id="type-tip">💡 Tips</div>
+        <div class="nav-item" onclick="filterByType('research')" id="type-research">🔬 Research</div>
+        <div class="nav-item" onclick="filterByType('tool')" id="type-tool">🛠️ Tools</div>
+        <div class="nav-item" onclick="filterByType('motivation')" id="type-motivation">🔥 Motivation</div>
+        <div class="nav-item" onclick="filterByType('funny')" id="type-funny">😄 Funny</div>
+        <div class="nav-item" onclick="filterByType('thread')" id="type-thread">🧵 Threads</div>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="sidebar-label">Tags</div>
+        <div id="tagsList"></div>
+      </div>
+    </aside>
+
+    <!-- CONTENT -->
+    <main class="content">
+      <div class="content-header">
+        <div>
+          <div class="content-title" id="contentTitle">All Posts</div>
+          <div class="content-meta" id="contentMeta">Loading...</div>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-ghost btn-sm" onclick="clearFilters()">Clear filters</button>
+        </div>
+      </div>
+
+      <div class="stats-bar" id="statsBar" style="display:none">
+        <div class="stat-card accent">
+          <div class="stat-num" id="s-total">0</div>
+          <div class="stat-label">Total Saved</div>
+        </div>
+        <div class="stat-card green">
+          <div class="stat-num" id="s-done">0</div>
+          <div class="stat-label">AI Tagged</div>
+        </div>
+        <div class="stat-card yellow">
+          <div class="stat-num" id="s-pending">0</div>
+          <div class="stat-label">In Queue</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-num" id="s-tags">0</div>
+          <div class="stat-label">Tags Found</div>
+        </div>
+      </div>
+
+      <div id="processingBanner" class="processing-banner" style="display:none">
+        <div class="spinner"></div>
+        <span id="processingText">AI is processing your posts in the background...</span>
+      </div>
+
+      <div class="filter-bar" id="filterBar" style="display:none">
+        <span style="font-size:12px;color:var(--text3);padding:5px 0;">Active filters:</span>
+        <span class="filter-chip active" id="activeFilterChip"></span>
+        <span class="filter-chip" onclick="clearFilters()">✕ Clear</span>
+      </div>
+
+      <div id="postsList" class="posts-grid"></div>
+      <div id="pagination" class="pagination"></div>
+    </main>
+  </div>
+</div>
+
+<!-- DETAIL PANEL -->
+<div class="detail-overlay" id="detailOverlay" onclick="closeDetail(event)">
+  <div class="detail-panel" id="detailPanel">
+    <button class="detail-close" onclick="closeDetailPanel()">← Back to library</button>
+    <div id="detailContent"></div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+const API = '';  // same origin
+let currentPage = 1;
+let currentFilters = {};
+let stats = {};
+let searchTimeout;
+
+// ─── INIT ───────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  loadStats();
+  loadPosts();
+  loadTags();
+  setInterval(refreshIfPending, 12000);
+
+  document.getElementById('searchInput').addEventListener('input', (e) => {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => {
+      currentPage = 1;
+      currentFilters.q = e.target.value.trim() || undefined;
+      loadPosts();
+    }, 400);
+  });
+});
+
+// ─── DATA LOADING ────────────────────────────────────────────────────────
+async function loadStats() {
+  try {
+    const r = await fetch('/api/posts/meta/stats');
+    stats = await r.json();
+    document.getElementById('s-total').textContent = stats.total || 0;
+    document.getElementById('s-done').textContent = stats.done || 0;
+    document.getElementById('s-pending').textContent = stats.pending || 0;
+    document.getElementById('s-tags').textContent = (stats.topTags || []).length;
+    document.getElementById('count-all').textContent = stats.total || 0;
+    document.getElementById('count-pending').textContent = stats.pending || 0;
+    document.getElementById('count-done').textContent = stats.done || 0;
+    if (stats.total > 0) document.getElementById('statsBar').style.display = 'grid';
+    if (stats.pending > 0) {
+      document.getElementById('processingBanner').style.display = 'flex';
+      document.getElementById('processingText').textContent =
+        `AI is organizing ${stats.pending} post${stats.pending !== 1 ? 's' : ''}... (slow & steady)`;
+    } else {
+      document.getElementById('processingBanner').style.display = 'none';
+    }
+  } catch(e) { console.error('Stats error', e); }
+}
+
+async function loadPosts() {
+  const params = new URLSearchParams({
+    page: currentPage,
+    limit: 20,
+    ...Object.fromEntries(Object.entries(currentFilters).filter(([,v]) => v !== undefined))
+  });
+
+  const r = await fetch(`/api/posts?${params}`);
+  const data = await r.json();
+
+  const list = document.getElementById('postsList');
+  if (data.posts.length === 0) {
+    list.innerHTML = renderEmpty();
+    document.getElementById('pagination').innerHTML = '';
+    document.getElementById('contentMeta').textContent = '0 posts';
+    return;
+  }
+
+  document.getElementById('contentMeta').textContent = `${data.total} posts`;
+  list.innerHTML = data.posts.map(renderCard).join('');
+  renderPagination(data.total, data.page, data.limit);
+}
+
+async function loadTags() {
+  const r = await fetch('/api/posts/meta/tags');
+  const data = await r.json();
+  const el = document.getElementById('tagsList');
+  if (!data.tags || data.tags.length === 0) { el.innerHTML = '<div style="padding:8px 16px;font-size:12px;color:var(--text3)">No tags yet</div>'; return; }
+  el.innerHTML = data.tags.slice(0, 20).map(t =>
+    `<div class="tag-pill-sidebar ${currentFilters.tag === t.name ? 'active' : ''}" onclick="filterByTag('${t.name}')">
+      <span class="tag-dot"></span>${t.name}
+      <span style="margin-left:auto;font-size:10px;color:var(--text3)">${t.post_count}</span>
+    </div>`
+  ).join('');
+}
+
+async function refreshIfPending() {
+  if (stats.pending > 0) {
+    await loadStats();
+    await loadPosts();
+    await loadTags();
+  }
+}
+
+// ─── RENDER ──────────────────────────────────────────────────────────────
+function renderCard(post) {
+  const initials = (post.author_name || '?').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+  const date = new Date(post.captured_at).toLocaleDateString('en-GB', {day:'numeric',month:'short',year:'numeric'});
+  const tags = (post.tags || []).slice(0, 5).map(t =>
+    `<span class="tag" onclick="filterByTag('${t}');event.stopPropagation()">#${t}</span>`
+  ).join('');
+  const topics = (post.topics || []).slice(0, 2).map(t =>
+    `<span class="topic-badge">${t}</span>`
+  ).join('');
+
+  return `
+  <div class="post-card ${post.status}" onclick="openDetail(${post.id})">
+    <div class="post-header">
+      <div class="post-avatar">${initials}</div>
+      <div class="post-meta">
+        <div class="post-author">${esc(post.author_name || 'Unknown')}</div>
+        <div class="post-author-title">${esc(post.author_title || '')}</div>
+      </div>
+      <div class="post-date">${date}</div>
+    </div>
+    ${post.one_liner ? `<div class="post-one-liner">${esc(post.one_liner)}</div>` : ''}
+    <div class="post-preview">${esc(post.preview || post.content || '')}</div>
+    ${post.why_saved ? `<div class="post-why">💡 ${esc(post.why_saved)}</div>` : ''}
+    ${tags ? `<div class="post-tags">${tags}</div>` : ''}
+    ${topics ? `<div class="post-tags" style="margin-top:4px">${topics}</div>` : ''}
+    <div class="post-footer">
+      <span class="post-type-badge">${post.post_type || 'post'}</span>
+      <span class="status-badge ${post.status}">${post.status}</span>
+      <a class="post-link" href="${esc(post.url)}" target="_blank" onclick="event.stopPropagation()">↗ Open</a>
+    </div>
+  </div>`;
+}
+
+function renderEmpty() {
+  const bookmarkletCode = `javascript:(function(){var d=document,b=d.body,c=b?b.innerText:'',a=d.querySelector('.feed-shared-actor__name'),t=d.querySelector('.feed-shared-actor__description');fetch('http://YOUR_NAS_IP:3131/api/capture',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:location.href,content:c.slice(0,3000),author_name:a?a.innerText:'',author_title:t?t.innerText:''})}).then(r=>r.json()).then(d=>alert(d.message||'Saved!')).catch(e=>alert('Error: '+e.message))})();`;
+
+  return `
+  <div class="empty">
+    <div class="empty-icon">📭</div>
+    <h3>No posts yet</h3>
+    <p>Add the bookmarklet to your browser and click it on any LinkedIn post page to start capturing.</p>
+    <div class="bookmarklet-code">${esc(bookmarkletCode)}</div>
+    <p style="margin-top:12px;font-size:12px;color:var(--text3)">
+      Select all the code above → drag to your bookmarks bar → rename it "Save to S&S"<br>
+      Or use the Chrome extension included in the /extension folder.
+    </p>
+  </div>`;
+}
+
+function renderPagination(total, page, limit) {
+  const pages = Math.ceil(total / limit);
+  if (pages <= 1) { document.getElementById('pagination').innerHTML = ''; return; }
+  let html = '';
+  html += `<button class="page-btn" onclick="goPage(${page-1})" ${page<=1?'disabled':''}>← Prev</button>`;
+  html += `<span class="page-info">Page ${page} of ${pages}</span>`;
+  html += `<button class="page-btn" onclick="goPage(${page+1})" ${page>=pages?'disabled':''}>Next →</button>`;
+  document.getElementById('pagination').innerHTML = html;
+}
+
+// ─── FILTERS ─────────────────────────────────────────────────────────────
+function filterBy(status) {
+  currentPage = 1;
+  currentFilters = status === 'all' ? {} : { status };
+  updateNavActive('nav', ['all','pending','done'], `nav-${status}`);
+  document.getElementById('contentTitle').textContent = status === 'all' ? 'All Posts' : status === 'pending' ? 'In Queue' : 'Organized';
+  updateFilterBar();
+  loadPosts();
+}
+
+function filterByTag(tag) {
+  currentPage = 1;
+  if (currentFilters.tag === tag) { delete currentFilters.tag; }
+  else { currentFilters = { ...currentFilters, tag }; }
+  document.getElementById('contentTitle').textContent = `#${tag}`;
+  updateFilterBar();
+  loadPosts();
+  loadTags();
+}
+
+function filterByType(type) {
+  currentPage = 1;
+  currentFilters = { ...currentFilters, type };
+  document.getElementById('contentTitle').textContent = type.charAt(0).toUpperCase() + type.slice(1) + 's';
+  updateFilterBar();
+  loadPosts();
+}
+
+function clearFilters() {
+  currentPage = 1;
+  const q = currentFilters.q;
+  currentFilters = q ? { q } : {};
+  document.getElementById('contentTitle').textContent = 'All Posts';
+  updateNavActive('nav', ['all','pending','done'], 'nav-all');
+  updateFilterBar();
+  loadPosts();
+  loadTags();
+}
+
+function updateFilterBar() {
+  const bar = document.getElementById('filterBar');
+  const chip = document.getElementById('activeFilterChip');
+  const active = Object.entries(currentFilters).filter(([k,v]) => k !== 'q' && v);
+  if (active.length > 0) {
+    bar.style.display = 'flex';
+    chip.textContent = active.map(([k,v]) => `${k}: ${v}`).join(', ');
+  } else { bar.style.display = 'none'; }
+}
+
+function updateNavActive(prefix, ids, activeId) {
+  ids.forEach(id => document.getElementById(`${prefix}-${id}`)?.classList.remove('active'));
+  document.getElementById(activeId)?.classList.add('active');
+}
+
+function goPage(p) { currentPage = p; loadPosts(); window.scrollTo(0,0); }
+
+// ─── DETAIL PANEL ─────────────────────────────────────────────────────────
+async function openDetail(id) {
+  const r = await fetch(`/api/posts/${id}`);
+  const post = await r.json();
+  const overlay = document.getElementById('detailOverlay');
+  const content = document.getElementById('detailContent');
+
+  const keyPoints = (post.key_points || '').split('|').filter(Boolean);
+  const date = new Date(post.captured_at).toLocaleDateString('en-GB', {day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+
+  content.innerHTML = `
+    <div class="detail-author">${esc(post.author_name || 'Unknown')}</div>
+    <div class="detail-author-title">${esc(post.author_title || '')}</div>
+    <div style="font-size:11px;color:var(--text3);margin-bottom:18px">Saved ${date}</div>
+
+    ${post.one_liner ? `
+    <div class="detail-section">
+      <div class="detail-section-label">AI Summary</div>
+      <div class="detail-one-liner">${esc(post.one_liner)}</div>
+    </div>` : ''}
+
+    ${keyPoints.length ? `
+    <div class="detail-section">
+      <div class="detail-section-label">Key Points</div>
+      <div class="detail-key-points">
+        ${keyPoints.map(p=>`<div class="key-point"><span class="key-point-dot">▸</span><span>${esc(p.trim())}</span></div>`).join('')}
+      </div>
+    </div>` : ''}
+
+    ${post.why_saved ? `
+    <div class="detail-section">
+      <div class="detail-section-label">Why You Saved This</div>
+      <div class="detail-why">💡 ${esc(post.why_saved)}</div>
+    </div>` : ''}
+
+    <div class="detail-section">
+      <div class="detail-section-label">Tags</div>
+      <div class="post-tags">
+        ${(post.tags||[]).map(t=>`<span class="tag" onclick="filterByTag('${t.name||t}');closeDetailPanel()">#${t.name||t}</span>`).join('')}
+        ${!post.tags?.length ? '<span style="color:var(--text3);font-size:13px">Being tagged by AI...</span>' : ''}
+      </div>
+    </div>
+
+    ${(post.topics||[]).length ? `
+    <div class="detail-section">
+      <div class="detail-section-label">Topics</div>
+      <div class="post-tags">${(post.topics||[]).map(t=>`<span class="topic-badge">${esc(t)}</span>`).join('')}</div>
+    </div>` : ''}
+
+    <div class="detail-section">
+      <div class="detail-section-label">Original Post</div>
+      <div class="detail-content">${esc(post.content || '')}</div>
+    </div>
+
+    <div class="detail-section">
+      <div class="detail-section-label">LinkedIn URL</div>
+      <a class="detail-url" href="${esc(post.url)}" target="_blank">${esc(post.url)}</a>
+    </div>
+
+    <div style="display:flex;gap:8px;margin-top:20px;flex-wrap:wrap">
+      <a class="btn btn-primary" href="${esc(post.url)}" target="_blank">↗ Open on LinkedIn</a>
+      ${post.status !== 'done' ? `<button class="btn btn-ghost btn-sm" onclick="reprocess(${post.id})">↻ Reprocess</button>` : ''}
+      <button class="btn btn-danger btn-sm" onclick="deletePost(${post.id})">🗑 Delete</button>
+    </div>
+  `;
+
+  overlay.classList.add('open');
+}
+
+function closeDetail(e) {
+  if (e.target === document.getElementById('detailOverlay')) closeDetailPanel();
+}
+function closeDetailPanel() {
+  document.getElementById('detailOverlay').classList.remove('open');
+}
+
+async function reprocess(id) {
+  await fetch(`/api/posts/${id}/reprocess`, { method: 'POST' });
+  toast('Queued for reprocessing', 'success');
+  closeDetailPanel();
+  loadPosts();
+}
+
+async function deletePost(id) {
+  if (!confirm('Delete this post from your library?')) return;
+  await fetch(`/api/posts/${id}`, { method: 'DELETE' });
+  toast('Post deleted', 'success');
+  closeDetailPanel();
+  loadPosts();
+  loadStats();
+}
+
+// ─── BOOKMARKLET DIALOG ───────────────────────────────────────────────────
+function showBookmarklet() {
+  const nasIp = location.hostname;
+  const port = location.port || '3131';
+  const code = `javascript:(function(){function g(s){var e=document.querySelector(s);return e?e.innerText.trim():''}var url=location.href,content=document.body?document.body.innerText.slice(0,3000):'',author=g('.feed-shared-actor__name, .update-components-actor__name'),title=g('.feed-shared-actor__description, .update-components-actor__description');fetch('http://${nasIp}:${port}/api/capture',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:url,content:content,author_name:author,author_title:title})}).then(function(r){return r.json()}).then(function(d){alert(d.message||'Saved!')}).catch(function(e){alert('Could not connect to SavedAndSorted: '+e.message)})})();`;
+
+  const msg = `BOOKMARKLET SETUP:
+
+1. Copy the code below
+2. Create a new bookmark in Chrome/Firefox
+3. Name it: "Save to S&S"
+4. Paste the code as the URL
+5. Click it on any LinkedIn post page
+
+${code}
+
+TIP: On LinkedIn, navigate to any saved post page or a post you want to save, then click the bookmarklet.`;
+  
+  alert(msg);
+}
+
+// ─── UTILS ───────────────────────────────────────────────────────────────
+function esc(str) {
+  return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function toast(msg, type = 'success') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = `toast ${type} show`;
+  setTimeout(() => { el.className = 'toast'; }, 3000);
+}
+
+function refreshStats() {
+  loadStats();
+  loadPosts();
+  loadTags();
+  toast('Refreshed', 'success');
+}
+</script>
+</body>
+</html>
