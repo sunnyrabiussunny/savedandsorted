@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SavedAndSorted</title>
+<link rel="icon" type="image/svg+xml" href="/logo.svg">
 <style>
   :root {
     --bg: #0f0f13;
@@ -34,8 +35,8 @@
     border-bottom: 1px solid var(--border); background: var(--surface);
     position: sticky; top: 0; z-index: 100;
   }
-  .logo { font-size: 18px; font-weight: 700; letter-spacing: -0.5px; white-space: nowrap; }
-  .logo span { color: var(--accent); }
+  .logo { font-size: 18px; font-weight: 700; letter-spacing: -0.5px; white-space: nowrap; display:flex; align-items:center; gap:8px; }
+  .logo-amp { color: var(--accent); }
   .search-bar {
     flex: 1; max-width: 480px;
     display: flex; align-items: center; gap: 8px;
@@ -268,12 +269,6 @@
   .empty-icon { font-size: 48px; margin-bottom: 16px; }
   .empty h3 { font-size: 16px; color: var(--text2); margin-bottom: 8px; }
   .empty p { font-size: 14px; line-height: 1.6; }
-  .empty .bookmarklet-code {
-    margin-top: 20px; background: var(--surface2); border: 1px solid var(--border);
-    border-radius: 8px; padding: 14px; font-family: monospace; font-size: 12px;
-    text-align: left; color: var(--text2); word-break: break-all;
-    user-select: all; cursor: text;
-  }
 
   /* PAGINATION */
   .pagination { display: flex; gap: 8px; justify-content: center; margin-top: 24px; align-items: center; }
@@ -324,13 +319,15 @@
 <div class="app">
   <!-- HEADER -->
   <header class="header">
-    <div class="logo">Saved<span>&</span>Sorted</div>
+    <div class="logo">
+      <img src="/logo.svg" alt="SavedAndSorted" style="width:28px;height:28px;display:block;">
+      <span>Saved<span class="logo-amp">&</span>Sorted</span>
+    </div>
     <div class="search-bar">
       <span class="search-icon">🔍</span>
       <input type="text" id="searchInput" placeholder="Search posts, authors, topics..." autocomplete="off">
     </div>
     <div class="header-actions">
-      <button class="btn btn-ghost btn-sm" onclick="showBookmarklet()">📎 Bookmarklet</button>
       <button class="btn btn-primary btn-sm" onclick="refreshStats()">↻ Refresh</button>
     </div>
   </header>
@@ -554,18 +551,12 @@ function renderCard(post) {
 }
 
 function renderEmpty() {
-  const bookmarkletCode = `javascript:(function(){var d=document,b=d.body,c=b?b.innerText:'',a=d.querySelector('.feed-shared-actor__name'),t=d.querySelector('.feed-shared-actor__description');fetch('http://YOUR_NAS_IP:3131/api/capture',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:location.href,content:c.slice(0,3000),author_name:a?a.innerText:'',author_title:t?t.innerText:''})}).then(r=>r.json()).then(d=>alert(d.message||'Saved!')).catch(e=>alert('Error: '+e.message))})();`;
-
   return `
   <div class="empty">
     <div class="empty-icon">📭</div>
     <h3>No posts yet</h3>
-    <p>Add the bookmarklet to your browser and click it on any LinkedIn post page to start capturing.</p>
-    <div class="bookmarklet-code">${esc(bookmarkletCode)}</div>
-    <p style="margin-top:12px;font-size:12px;color:var(--text3)">
-      Select all the code above → drag to your bookmarks bar → rename it "Save to S&S"<br>
-      Or use the Chrome extension included in the /extension folder.
-    </p>
+    <p>Use the SavedAndSorted Chrome extension to save LinkedIn posts to your library.<br>
+    Click the extension icon while viewing any LinkedIn post.</p>
   </div>`;
 }
 
@@ -725,27 +716,6 @@ async function deletePost(id) {
   closeDetailPanel();
   loadPosts();
   loadStats();
-}
-
-// ─── BOOKMARKLET DIALOG ───────────────────────────────────────────────────
-function showBookmarklet() {
-  const nasIp = location.hostname;
-  const port = location.port || '3131';
-  const code = `javascript:(function(){function g(s){var e=document.querySelector(s);return e?e.innerText.trim():''}var url=location.href,content=document.body?document.body.innerText.slice(0,3000):'',author=g('.feed-shared-actor__name, .update-components-actor__name'),title=g('.feed-shared-actor__description, .update-components-actor__description');fetch('http://${nasIp}:${port}/api/capture',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:url,content:content,author_name:author,author_title:title})}).then(function(r){return r.json()}).then(function(d){alert(d.message||'Saved!')}).catch(function(e){alert('Could not connect to SavedAndSorted: '+e.message)})})();`;
-
-  const msg = `BOOKMARKLET SETUP:
-
-1. Copy the code below
-2. Create a new bookmark in Chrome/Firefox
-3. Name it: "Save to S&S"
-4. Paste the code as the URL
-5. Click it on any LinkedIn post page
-
-${code}
-
-TIP: On LinkedIn, navigate to any saved post page or a post you want to save, then click the bookmarklet.`;
-  
-  alert(msg);
 }
 
 // ─── UTILS ───────────────────────────────────────────────────────────────
