@@ -336,6 +336,7 @@
       <input type="text" id="searchInput" placeholder="Search posts, authors, topics..." autocomplete="off">
     </div>
     <div class="header-actions">
+      <button class="btn btn-ghost btn-sm" onclick="showManualAdd()">✏️ Add Post</button>
       <button class="btn btn-primary btn-sm" onclick="refreshStats()">↻ Refresh</button>
     </div>
   </header>
@@ -345,6 +346,9 @@
     <aside class="sidebar">
       <div class="sidebar-section">
         <div class="sidebar-label">Tools</div>
+        <div class="nav-item" onclick="showManualAdd()" id="nav-manual">
+          ✏️ Add Post
+        </div>
         <div class="nav-item" onclick="showImport()" id="nav-import">
           📥 Bulk Import
         </div>
@@ -426,6 +430,85 @@
       <div id="postsList" class="posts-grid"></div>
       <div id="pagination" class="pagination"></div>
     </main>
+  </div>
+</div>
+
+<!-- MANUAL ADD PANEL -->
+<div class="detail-overlay" id="manualOverlay" onclick="closeManualPanel(event)">
+  <div class="detail-panel" style="width:520px">
+    <button class="detail-close" onclick="closeManualOverlay()">← Back to library</button>
+    <div style="font-size:18px;font-weight:700;margin-bottom:4px">✏️ Add Post Manually</div>
+    <div style="font-size:13px;color:var(--text3);margin-bottom:24px">Paste a LinkedIn URL or paste the post text directly</div>
+
+    <!-- TAB SWITCHER -->
+    <div style="display:flex;gap:0;margin-bottom:20px;border:1px solid var(--border);border-radius:8px;overflow:hidden">
+      <button id="tab-url" onclick="switchTab('url')" style="
+        flex:1;padding:9px;font-size:13px;font-weight:600;border:none;cursor:pointer;
+        background:var(--accent);color:white;transition:all 0.15s
+      ">🔗 Paste URL</button>
+      <button id="tab-text" onclick="switchTab('text')" style="
+        flex:1;padding:9px;font-size:13px;font-weight:600;border:none;cursor:pointer;
+        background:var(--surface2);color:var(--text2);transition:all 0.15s
+      ">📋 Paste Text</button>
+    </div>
+
+    <!-- URL TAB -->
+    <div id="panel-url">
+      <div class="detail-section-label">LinkedIn Post URL</div>
+      <input type="text" id="manualUrl" placeholder="https://www.linkedin.com/posts/..." style="
+        width:100%;background:var(--surface2);border:1px solid var(--border);
+        border-radius:8px;padding:10px 12px;color:var(--text);font-size:14px;
+        outline:none;margin-bottom:6px
+      ">
+      <div style="font-size:12px;color:var(--text3);margin-bottom:16px;line-height:1.5">
+        ⚠️ LinkedIn requires login to view posts — URL fetch works best when you are logged in on the same browser session. If it fails, use "Paste Text" instead.
+      </div>
+      <button class="btn btn-primary" style="width:100%" onclick="fetchAndSaveUrl()">
+        ↓ Fetch & Save Post
+      </button>
+    </div>
+
+    <!-- TEXT TAB -->
+    <div id="panel-text" style="display:none">
+      <div class="detail-section-label" style="margin-bottom:6px">Post Content</div>
+      <textarea id="manualContent" placeholder="Paste the full post text here..." style="
+        width:100%;height:180px;background:var(--surface2);border:1px solid var(--border);
+        border-radius:8px;padding:10px 12px;color:var(--text);font-size:13px;
+        outline:none;resize:vertical;line-height:1.6;margin-bottom:12px;font-family:inherit
+      "></textarea>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+        <div>
+          <div class="detail-section-label" style="margin-bottom:6px">Author Name</div>
+          <input type="text" id="manualAuthor" placeholder="e.g. John Doe" style="
+            width:100%;background:var(--surface2);border:1px solid var(--border);
+            border-radius:8px;padding:8px 12px;color:var(--text);font-size:13px;outline:none
+          ">
+        </div>
+        <div>
+          <div class="detail-section-label" style="margin-bottom:6px">Author Title (optional)</div>
+          <input type="text" id="manualTitle" placeholder="e.g. CEO at Company" style="
+            width:100%;background:var(--surface2);border:1px solid var(--border);
+            border-radius:8px;padding:8px 12px;color:var(--text);font-size:13px;outline:none
+          ">
+        </div>
+      </div>
+
+      <div>
+        <div class="detail-section-label" style="margin-bottom:6px">LinkedIn URL (optional)</div>
+        <input type="text" id="manualUrlText" placeholder="https://www.linkedin.com/posts/..." style="
+          width:100%;background:var(--surface2);border:1px solid var(--border);
+          border-radius:8px;padding:8px 12px;color:var(--text);font-size:13px;
+          outline:none;margin-bottom:14px
+        ">
+      </div>
+
+      <button class="btn btn-primary" style="width:100%" onclick="saveManualText()">
+        💾 Save to Library
+      </button>
+    </div>
+
+    <div id="manualMsg" style="display:none;margin-top:14px;padding:10px 12px;border-radius:8px;font-size:13px"></div>
   </div>
 </div>
 
@@ -834,6 +917,122 @@ async function deletePost(id) {
   closeDetailPanel();
   loadPosts();
   loadStats();
+}
+
+// ─── MANUAL ADD ──────────────────────────────────────────────────────────
+function showManualAdd() {
+  document.getElementById('manualOverlay').classList.add('open');
+  updateNavActive('nav', ['all','pending','done','import','manual'], 'nav-manual');
+  document.getElementById('manualMsg').style.display = 'none';
+  document.getElementById('manualUrl').value = '';
+  document.getElementById('manualContent').value = '';
+  document.getElementById('manualAuthor').value = '';
+  document.getElementById('manualTitle').value = '';
+  document.getElementById('manualUrlText').value = '';
+}
+
+function closeManualOverlay() {
+  document.getElementById('manualOverlay').classList.remove('open');
+  updateNavActive('nav', ['all','pending','done','import','manual'], 'nav-all');
+}
+
+function closeManualPanel(e) {
+  if (e.target === document.getElementById('manualOverlay')) closeManualOverlay();
+}
+
+function switchTab(tab) {
+  const isUrl = tab === 'url';
+  document.getElementById('panel-url').style.display = isUrl ? 'block' : 'none';
+  document.getElementById('panel-text').style.display = isUrl ? 'none' : 'block';
+  document.getElementById('tab-url').style.background = isUrl ? 'var(--accent)' : 'var(--surface2)';
+  document.getElementById('tab-url').style.color = isUrl ? 'white' : 'var(--text2)';
+  document.getElementById('tab-text').style.background = isUrl ? 'var(--surface2)' : 'var(--accent)';
+  document.getElementById('tab-text').style.color = isUrl ? 'var(--text2)' : 'white';
+  document.getElementById('manualMsg').style.display = 'none';
+}
+
+async function fetchAndSaveUrl() {
+  const url = document.getElementById('manualUrl').value.trim();
+  if (!url || !url.includes('linkedin.com')) {
+    showManualMsg('Please enter a valid LinkedIn URL', 'error'); return;
+  }
+  showManualMsg('Fetching post from LinkedIn...', 'info');
+  try {
+    const r = await fetch('/api/capture/fetch-url', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url })
+    });
+    const data = await r.json();
+    if (data.success && data.fallback) {
+      // URL fetch failed, pre-fill text tab for manual paste
+      switchTab('text');
+      document.getElementById('manualUrlText').value = url;
+      showManualMsg('Could not fetch from LinkedIn (login required). Paste the post text manually below.', 'error');
+    } else if (data.success) {
+      showManualMsg(data.duplicate ? 'Already in your library!' : '✅ Saved! AI tagging in background.', 'success');
+      loadStats(); loadPosts();
+      document.getElementById('manualUrl').value = '';
+    } else {
+      showManualMsg('❌ ' + (data.error || 'Failed'), 'error');
+    }
+  } catch(e) {
+    showManualMsg('❌ Error: ' + e.message, 'error');
+  }
+}
+
+async function saveManualText() {
+  const content = document.getElementById('manualContent').value.trim();
+  const author_name = document.getElementById('manualAuthor').value.trim();
+  const author_title = document.getElementById('manualTitle').value.trim();
+  const url = document.getElementById('manualUrlText').value.trim() ||
+    `manual:${Date.now()}:${Math.random().toString(36).slice(2)}`;
+
+  if (!content || content.length < 10) {
+    showManualMsg('Please paste some post content', 'error'); return;
+  }
+
+  try {
+    const r = await fetch('/api/capture', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url, content, author_name, author_title })
+    });
+    const data = await r.json();
+    if (data.duplicate) {
+      showManualMsg('Already in your library!', 'info');
+    } else if (data.success) {
+      showManualMsg('✅ Saved! AI will tag it in the background.', 'success');
+      document.getElementById('manualContent').value = '';
+      document.getElementById('manualAuthor').value = '';
+      document.getElementById('manualTitle').value = '';
+      document.getElementById('manualUrlText').value = '';
+      loadStats(); loadPosts();
+    } else {
+      showManualMsg('❌ ' + (data.error || 'Failed'), 'error');
+    }
+  } catch(e) {
+    showManualMsg('❌ Error: ' + e.message, 'error');
+  }
+}
+
+function showManualMsg(text, type) {
+  const el = document.getElementById('manualMsg');
+  el.style.display = 'block';
+  el.textContent = text;
+  if (type === 'success') {
+    el.style.background = 'rgba(74,222,128,0.1)';
+    el.style.border = '1px solid rgba(74,222,128,0.2)';
+    el.style.color = '#4ade80';
+  } else if (type === 'error') {
+    el.style.background = 'rgba(248,113,113,0.1)';
+    el.style.border = '1px solid rgba(248,113,113,0.2)';
+    el.style.color = '#f87171';
+  } else {
+    el.style.background = 'rgba(124,106,247,0.1)';
+    el.style.border = '1px solid rgba(124,106,247,0.2)';
+    el.style.color = '#7c6af7';
+  }
 }
 
 // ─── IMPORT PANEL ────────────────────────────────────────────────────────
